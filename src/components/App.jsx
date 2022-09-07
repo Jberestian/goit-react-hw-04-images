@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { getImages } from 'shared/api/images';
 
 import Loader from './Loader/Loader';
@@ -7,61 +7,66 @@ import Searchbar from './Searchbar/Searchbar';
 import Button from './Button/Button';
 import Modal from './Modal/Modal';
 
-class App extends Component {
-  state = {
+const App = () => {
+  const [images, setImages] = useState({
     items: [],
     loading: false,
     error: null,
-    page: 1,
-    value: '',
+  });
+
+  const [value, setValue] = useState('');
+
+  const [modal, setModal] = useState({
     modalOpen: false,
     modalContent: {
       src: '',
     },
-  };
+  });
 
-  componentDidUpdate(_, prevState) {
-    const { page, value } = this.state;
+  const [page, setPage] = useState(1);
 
-    if ((value && prevState.value !== value) || page > prevState.page) {
-      this.fetchImages();
-    }
-  }
-
-  async fetchImages() {
-    const { page, value } = this.state;
-    this.setState({
-      loading: true,
-      error: null,
-    });
-
-    try {
-      const data = await getImages(page, value);
-
-      this.setState(({ items }) => ({
-        items: [...items, ...data.hits],
+  useEffect(() => {
+    const getImage = async () => {
+      setImages(prevImages => ({
+        ...prevImages,
+        loading: true,
+        error: null,
       }));
-    } catch (error) {
-      this.setState({
-        error,
-      });
-    } finally {
-      this.setState({ loading: false });
+      try {
+        const data = await getImages(page, value);
+        setImages(prevImages => ({
+          ...prevImages,
+          items: [...prevImages.items, ...data.hits],
+          loading: false,
+        }));
+      } catch (error) {
+        setImages(prevImages => ({
+          ...prevImages,
+          error,
+        }));
+      } finally {
+        setImages(prevImages => ({
+          ...prevImages,
+          loading: false,
+        }));
+      }
+    };
+    if (value) {
+      getImage();
     }
-  }
+  }, [page, value]);
 
-  loadMore = () => {
-    this.setState(({ page }) => ({
-      page: page + 1,
-    }));
+  const handleFormSubmit = value => {
+    setValue(value);
+    setImages({
+      ...images,
+      items: [],
+    });
+    setPage(1);
   };
 
-  handleFormSubmit = value => {
-    this.setState({ value, items: [], page: 1 });
-  };
-
-  openModal = modalContent => {
-    this.setState({
+  const openModal = modalContent => {
+    setModal({
       modalOpen: true,
       modalContent: {
         src: modalContent,
@@ -69,42 +74,45 @@ class App extends Component {
     });
   };
 
-  closeModal = () => {
-    this.setState({
+  const close = () => {
+    setModal(prevModal => ({
+      ...prevModal,
       modalOpen: false,
-    });
+    }));
   };
 
-  render() {
-    const { loadMore, handleFormSubmit, closeModal, openModal } = this;
-    const { items, loading, error, modalOpen, modalContent } = this.state;
+  const loadMore = () => {
+    setPage(prevPage => prevPage + 1);
+  };
 
-    return (
-      <div className="app">
-        <header className="searchbar">
-          <Searchbar onSubmit={handleFormSubmit} />
-        </header>
+  const { modalOpen, modalContent } = modal;
+  const { items, loading, error } = images;
 
-        {loading && <Loader />}
-        {error && (
-          <p>
-            style={{ fontSize: '30px', fontWeight: '800', textAlign: 'Center' }}
-            Не удалось найти изображение
-          </p>
-        )}
+  return (
+    <div className="app">
+      <header className="searchbar">
+        <Searchbar onSubmit={handleFormSubmit} />
+      </header>
 
-        <ImageGallery onClick={openModal} items={items} />
+      {loading && <Loader />}
+      {error && (
+        <p>
+          style={{ fontSize: '30px', fontWeight: '800', textAlign: 'Center' }}
+          Не удалось найти изображение
+        </p>
+      )}
 
-        {modalOpen && (
-          <Modal onClose={closeModal}>
-            <img src={modalContent.src} alt="img"></img>
-          </Modal>
-        )}
+      <ImageGallery onClick={openModal} items={items} />
 
-        {items.length >= 12 && <Button onClick={loadMore} />}
-      </div>
-    );
-  }
-}
+      {modalOpen && (
+        <Modal onClose={close}>
+          <img src={modalContent.src} alt="img"></img>
+        </Modal>
+      )}
+
+      {items.length >= 12 && <Button onClick={loadMore} />}
+    </div>
+  );
+};
 
 export default App;

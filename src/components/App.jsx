@@ -105,7 +105,7 @@ const App = () => {
       <ImageGallery onClick={openModal} items={items} />
 
       {modalOpen && (
-        <Modal onClose={close}>
+        <Modal close={close}>
           <img src={modalContent.src} alt="img"></img>
         </Modal>
       )}
